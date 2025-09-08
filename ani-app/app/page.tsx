@@ -17,10 +17,10 @@ export default function Home() {
         A SERIES THAT LEFT YOU IN AWE OR YOU’RE SEARCHING FOR HIDDEN GEMS, ANIMORE+ MAKES RECOMMENDATIONS TAILORED TO YOU+
         </div>
         <div className="flex gap-4">
-          <button className="outline-2 px-6 py-3 bg-black-600 text-white  hover:bg-blue-700 transition font-bold">
+          <button className="outline-2 px-6 py-3 bg-black text-white  hover:bg-white hover:text-black transition font-bold">
             LOGIN
           </button>
-          <button className="px-6 py-3 bg-gray-200 text-gray-800 hover:bg-gray-300 transition font-bold">
+          <button className="outline-2 px-6 py-3 bg-white text-black hover:bg-black hover:text-white transition font-bold">
             SIGNUP
           </button>
         </div>

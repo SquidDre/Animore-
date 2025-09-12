@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import { useRouter } from "next/navigation"; // 👈 Next.js router hook
-import Search from "../../public/search.svg";
+import search from "../../components/search"
 import "../globals.css";
 export default function ExplorePage() {
   const router = useRouter();
@@ -34,6 +34,7 @@ export default function ExplorePage() {
       <div className="flex justify-center min-h-screen">
         <h1 className="text-6xl font-bold mt-8">EXPLORE+</h1>
       </div>
+      <search />
     </div>
   );
 }

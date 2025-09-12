@@ -24,14 +24,14 @@ export default function Home() {
 
         <div className="flex gap-4">
           <button
-            onClick={() => router.push("/explore")} // 👈 Programmatic navigation
+            onClick={() => router.push("/explore")} // navigate to explore page
             className="outline-2 px-24 py-3 bg-black text-white hover:bg-amber-300 hover:text-black transition font-bold"
           >
             EXPLORE
           </button>
 
           <button
-            onClick={() => router.push("/signup")}
+            onClick={() => router.push("/signup")} // navigate to signup page
             className="outline-2 px-6 py-3 bg-black text-white hover:bg-white hover:text-black transition font-bold"
           >
             SIGNUP

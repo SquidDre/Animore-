@@ -9,7 +9,7 @@ export default function ExplorePage() {
 
   return (
     <div className="font-sans min-h-screen p-4 sm:p-8">
-      <div className="flex justify-between gap-4 m-4">
+      <div className="flex justify-between gap-4 m-4 cursor-pointer">
         <h1 onClick={() => router.push("")} className="m-4 mt-4 text-4xl font-bold flex">
             ANIMORE
             <span className="animate-blink text-amber-300">+</span>

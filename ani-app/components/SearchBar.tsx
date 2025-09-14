@@ -1,47 +1,86 @@
-// imports react hooks and types. 'use client' directive for Next.js
-// 'FormEvent' type for form event handling in TypeScript
-import { useState, FormEvent } from "react";
+'use client';
 
-// Define the structure of the search result item
+import { useState, FormEvent, useEffect } from "react";
+
 interface Item {
   _id: string;
-  name: string;
+  Name: string;
 }
 
-
 export default function SearchBar() {
-  const [query, setQuery] = useState<string>(""); // query holds the search input
-  const [results, setResults] = useState<Item[]>([]); // results holds the search results of Item type
-  // and sets the initial state to an empty array
+  const [query, setQuery] = useState<string>("");
+  const [results, setResults] = useState<Item[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
 
-  // handleSearch function to manage form submission and fetch search results
-  const handleSearch = async (e: FormEvent<HTMLFormElement> ) => { // specify the event type for TypeScript
-    e.preventDefault(); // prevent default form submission behavior
-    const res = await fetch(`/api/search?q=${query}`); // fetch search results from the API
-    const data: Item[] = await res.json(); // parse the JSON response and type it as an array of Item
-    setResults(data); // update the results state with the fetched data
+  // Debounced search effect
+  useEffect(() => {
+    if (query.trim().length === 0) {
+      setResults([]);
+      return;
+    }
+
+    const delayDebounceFn = setTimeout(async () => {
+      setIsLoading(true);
+      try {
+        const res = await fetch(`/api/search?q=${encodeURIComponent(query)}`);
+        const data: Item[] = await res.json();
+        setResults(data.splice(0, 20)); // Limit to top 10 results
+      } catch (error) {
+        console.error('Search error:', error);
+      } finally {
+        setIsLoading(false);
+      }
+    }, 300); // 300ms delay
+
+    return () => clearTimeout(delayDebounceFn);
+  }, [query]);
+
+  const handleSubmit = (e: FormEvent<HTMLFormElement>) => {
+    e.preventDefault(); // Prevent form submission if needed
   };
 
   return (
-    <div>
-      <form onSubmit={handleSearch}>
+    <div className="w-full max-w-2xl mx-auto">
+      <form onSubmit={handleSubmit}>
         <input
           type="text"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           placeholder="RECOMMENDATIONS FROM..."
-          className="outline-2 p-2 pl-2 w-128 m-2"
+          className="outline-2 p-2 pl-2 w-full m-2"
+          autoComplete="off"
         />
-        <button type="submit" className="outline-2 px-4 py-2 my-3 bg-black text-white hover:bg-white hover:text-black transition font-bold">
-          SEARCH
-        </button>
       </form>
 
-      <ul>
-        {results.map((item) => (
-          <li key={item._id}>{item.name}</li>
-        ))}
-      </ul>
+      {/* Results container - shows as you type */}
+      {(results.length > 0 || isLoading) && (
+        <div className="mt-4 p-4 rounded-lg">
+          <h3 className="font-bold text-white mb-2">Search Results:</h3>
+          
+          {isLoading ? (
+            <p className="text-black">Loading...</p>
+          ) : (
+            <ul>
+              {results.map((item) => (
+                <li key={item._id} className="p-2 text-white">
+                  <button
+                    className="w-full p-3 text-left hover:bg-gray-800  transition cursor-pointer text-white"
+                    onClick={() => console.log('Selected:', item.Name)}
+                  >
+                    {item.Name}
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      )}
+
+      {results.length === 0 && query && !isLoading && (
+        <div className="mt-4 p-4 rounded-lg">
+          <p className="text-black">No results found for "{query}"</p>
+        </div>
+      )}
     </div>
   );
 }

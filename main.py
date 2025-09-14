@@ -5,43 +5,48 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 import warnings
 from pymongo import MongoClient
+from flask import Flask, request, jsonify
+from flask_cors import CORS #necessary for cross-origin requests from frontend to backend in development
 warnings.simplefilter(action='ignore', category=FutureWarning)
 
 url = "mongodb+srv://deandrebaileyisaiah_db_user:Sakura43@anime.umwgmbd.mongodb.net/"
 client = MongoClient(url)
 db = client.get_database('anime')
 
-rating_docs = list(db.ratings.find({}, {'_id': 0}))
+# DATABASE
+rating_docs = list(db.ratings_db.find({}, {'_id': 0}))
 movie_docs = list(db.anime.find({}, {'_id': 0}))
 
 ratings = pd.DataFrame(rating_docs)
-movies = pd.DataFrame(movie_docs)
+animes = pd.DataFrame(movie_docs)
 
 print(ratings.head())
-print(movies.head())
+print(animes.head())
+
+# TEST AND MATRIX
 
 n_ratings = len(ratings)
 n_movies = len(ratings['anime_id'].unique())
 n_users = len(ratings['user_id'].unique())
 
-print(f"Number of ratings: {n_ratings}")
-print(f"Number of unique anime_id's: {n_movies}")
-print(f"Number of unique users: {n_users}")
+#print(f"Number of ratings: {n_ratings}")
+#print(f"Number of unique anime_id's: {n_movies}")
+#print(f"Number of unique users: {n_users}")
 
-user_freq = ratings[['user_id','anime_id']].groupby('user_id').count().reset_index()
-user_freq.columns = ['user_id','n_ratings']
-print(user_freq.head())
+#user_freq = ratings[['user_id','anime_id']].groupby('user_id').count().reset_index()
+#user_freq.columns = ['user_id','n_ratings']
+#print(user_freq.head())
 
-mean_rating = ratings.groupby('anime_id')[['rating']].mean()
-lowest_rated = mean_rating['rating'].idxmin()
-movies.loc[movies['anime_id'] == lowest_rated]
-highest_rated = mean_rating['rating'].idxmax()
-movies.loc[movies['anime_id'] == highest_rated]
-ratings[ratings['anime_id']==highest_rated]
-ratings[ratings['anime_id']==lowest_rated]
+#mean_rating = ratings.groupby('anime_id')[['rating']].mean()
+#lowest_rated = mean_rating['rating'].idxmin()
+#animes.loc[animes['anime_id'] == lowest_rated]
+#highest_rated = mean_rating['rating'].idxmax()
+#animes.loc[animes['anime_id'] == highest_rated]
+#ratings[ratings['anime_id']==highest_rated]
+#ratings[ratings['anime_id']==lowest_rated]
 
-movie_stats = ratings.groupby('anime_id')[['rating']].agg(['count', 'mean'])
-movie_stats.columns = movie_stats.columns.droplevel()
+#movie_stats = ratings.groupby('anime_id')[['rating']].agg(['count', 'mean'])
+#movie_stats.columns = movie_stats.columns.droplevel()
 
 from scipy.sparse import csr_matrix
 
@@ -67,7 +72,7 @@ X, user_mapper, movie_mapper, user_inv_mapper, movie_inv_mapper = create_matrix(
 
 from sklearn.neighbors import NearestNeighbors
 
-def find_similar_movies(movie_id, X, k, metric='cosine', show_distance=False):
+def find_similar_animes(movie_id, X, k, metric='cosine', show_distance=False):
     neighbour_ids = []
     
     if movie_id not in movie_mapper:
@@ -89,35 +94,59 @@ def find_similar_movies(movie_id, X, k, metric='cosine', show_distance=False):
     neighbour_ids.pop(0) 
     return neighbour_ids
 
-def recommend_movies_for_user(user_id, X, user_mapper, movie_mapper, movie_inv_mapper, k=10):
+# RECOMMENDATION FUNCTIONS (First one not necessary right now need to be changed to recommend based on anime_id input)
+def recommend_animes_for_user(user_id, X, user_mapper, anime_mapper, anime_inv_mapper, k=10):
     df1 = ratings[ratings['user_id'] == user_id]
 
-    movie_id = df1[df1['rating'] == max(df1['rating'])]['anime_id'].iloc[0]
+    anime_id = df1[df1['rating'] == max(df1['rating'])]['anime_id'].iloc[0]
 
-    movie_titles = dict(zip(movies['anime_id'], movies['Name']))
+    anime_titles = dict(zip(animes['anime_id'], animes['Name']))
 
-    similar_ids = find_similar_movies(movie_id, X, k)
+    similar_ids = find_similar_animes(anime_id, X, k)
 
-    print(f"Since you watched {movie_titles[movie_id]}, you might also like:")
+    print(f"Since you watched {anime_titles[anime_id]}, you might also like:")
 
     for i in similar_ids:
-        if i in movie_titles:
-            print(movie_titles[i])
+        if i in anime_titles:
+            print(anime_titles[i])
 
-def recommend_movies_for_anime(anime_id, X, user_mapper, movie_mapper, movie_inv_mapper, k=10):
+def recommend_animes_for_anime(anime_id, X, user_mapper, movie_mapper, movie_inv_mapper, k=10):
 
     movie_id = anime_id
 
-    movie_titles = dict(zip(movies['anime_id'], movies['Name']))
+    anime_titles = dict(zip(animes['anime_id'], animes['Name']))
 
-    similar_ids = find_similar_movies(movie_id, X, k)
+    similar_ids = find_similar_animes(movie_id, X, k)
 
-    print(f"Since you watched {movie_titles[movie_id]}, you might also like:")
+    print(f"Since you watched {anime_titles[movie_id]}, you might also like:")
 
+    #simply print titles of recommended animes
     for i in similar_ids:
-        if i in movie_titles:
-            print(movie_titles[i])
+        if i in anime_titles:
+            print(anime_titles[i])
 
-user_id = 150 
-recommend_movies_for_user(user_id, X, user_mapper, movie_mapper, movie_inv_mapper, k=10)
-recommend_movies_for_anime(170, X, user_mapper, movie_mapper, movie_inv_mapper, k=10)
+    #returns full details of recommended animes
+    recommended = animes[animes['anime_id'].isin(similar_ids)].to_dict(orient="records")
+
+    return recommended
+
+user_id = 558 
+#recommend_animes_for_user(user_id, X, user_mapper, movie_mapper, movie_inv_mapper, k=10)
+recommend_animes_for_anime(170, X, user_mapper, movie_mapper, movie_inv_mapper, k=10)
+
+
+# ---------------- Flask setup ----------------
+app = Flask(__name__) # Initialize Flask app listens for requests and routes them to appropriate functions
+CORS(app) # Enable CORS for the Flask app
+@app.route("/recommend/anime/<int:anime_id>", methods=["GET"]) #when a GET request is made to this route, the recommend_anime function is called
+def recommend_anime(anime_id):
+    recs = recommend_animes_for_anime(anime_id, X, user_mapper, movie_mapper, movie_inv_mapper, k=10)
+    return jsonify({"anime_id": anime_id, "recommendations": recs})
+    #returns a JSON response containing the anime_id and the list of recommended animes
+
+
+if __name__ == "__main__":
+    app.run(debug=True, port=5000) #starts the Flask development server in debug mode adn at port 5000
+
+#run python main.py to start the Flask server
+#open browsert to http://127.0.0.1:5000/recommend/anime/??? where ??? is a valid anime_id to see the recommendations for that anime

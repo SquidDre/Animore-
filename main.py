@@ -9,8 +9,8 @@ from flask import Flask, request, jsonify
 from flask_cors import CORS #necessary for cross-origin requests from frontend to backend in development
 warnings.simplefilter(action='ignore', category=FutureWarning)
 
-url = "mongodb+srv://deandrebaileyisaiah_db_user:Sakura43@anime.umwgmbd.mongodb.net/"
-client = MongoClient(url)
+uri = "mongodb+srv://test:test1234@anime.umwgmbd.mongodb.net/"
+client = MongoClient(uri)
 db = client.get_database('anime')
 
 # DATABASE

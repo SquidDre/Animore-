@@ -125,6 +125,28 @@ def recommend_animes_for_anime(anime_id, X, user_mapper, movie_mapper, movie_inv
         if i in anime_titles:
             print(anime_titles[i])
 
-user_id = 150 
-recommend_movies_for_user(user_id, X, user_mapper, movie_mapper, movie_inv_mapper, k=10)
-recommend_movies_for_anime(170, X, user_mapper, movie_mapper, movie_inv_mapper, k=10)
+    #returns full details of recommended animes
+    recommended = animes[animes['anime_id'].isin(similar_ids)].to_dict(orient="records")
+
+    return recommended
+
+user_id = 558 
+#recommend_animes_for_user(user_id, X, user_mapper, movie_mapper, movie_inv_mapper, k=10)
+recommend_animes_for_anime(170, X, user_mapper, movie_mapper, movie_inv_mapper, k=10)
+
+
+# ---------------- Flask setup ----------------
+app = Flask(__name__) # Initialize Flask app listens for requests and routes them to appropriate functions
+CORS(app) # Enable CORS for the Flask app
+@app.route("/recommend/anime/<int:anime_id>", methods=["GET"]) #when a GET request is made to this route, the recommend_anime function is called
+def recommend_anime(anime_id):
+    recs = recommend_animes_for_anime(anime_id, X, user_mapper, movie_mapper, movie_inv_mapper, k=10)
+    return jsonify({"anime_id": anime_id, "recommendations": recs})
+    #returns a JSON response containing the anime_id and the list of recommended animes
+
+
+if __name__ == "__main__":
+    app.run(debug=True, port=5000) #starts the Flask development server in debug mode adn at port 5000
+
+#run python main.py to start the Flask server
+#open browsert to http://127.0.0.1:5000/recommend/anime/??? where ??? is a valid anime_id to see the recommendations for that anime

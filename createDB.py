@@ -1,25 +1,21 @@
 import requests
-from pymongo import MongoClient
 import time
+from pymongo import MongoClient
 
 # MongoDB connection
-uri = "mongodb+srv://test:test1234@anime.umwgmbd.mongodb.net/"
+uri = "mongodb+srv://deandrebaileyisaiah_db_user:Sakura43@anime.umwgmbd.mongodb.net/"
 client = MongoClient(uri)
-db = client.get_database("anime")
-collection = db["anime_map"]  # new collection
+db = client["anime"]
+collection = db["anime_anilist"]
 
-# AniList API endpoint
-url = "https://graphql.anilist.co"
+# Wipe old collection
+collection.drop()
 
+# GraphQL query
 query = """
 query ($page: Int, $perPage: Int) {
   Page(page: $page, perPage: $perPage) {
-    pageInfo {
-      total
-      currentPage
-      hasNextPage
-    }
-    media(type: ANIME, sort: POPULARITY_DESC) {
+    media(type: ANIME) {
       id
       idMal
       title {
@@ -27,59 +23,62 @@ query ($page: Int, $perPage: Int) {
         english
         native
       }
-      description(asHtml: false)
+      description
+      episodes
+      status
+      season
+      seasonYear
       genres
       tags {
         name
         rank
+        isAdult
       }
       averageScore
       popularity
-      episodes
-      season
-      seasonYear
     }
   }
 }
 """
 
+url = "https://graphql.anilist.co"
+
 page = 1
-per_page = 50  # AniList allows up to 50 per query
+perPage = 50  # AniList max = 50
 
 while True:
-    variables = {"page": page, "perPage": per_page}
+    variables = {"page": page, "perPage": perPage}
     response = requests.post(url, json={"query": query, "variables": variables})
-    response.raise_for_status()
-    result = response.json()
+    data = response.json()
 
-    media_list = result["data"]["Page"]["media"]
-    if not media_list:
+    if "errors" in data:
+        print(f"❌ Error on page {page}:", data["errors"])
         break
 
-    # Insert each anime into MongoDB
-    for media in media_list:
+    page_data = data.get("data", {}).get("Page", {})
+    media = page_data.get("media", [])
+
+    if not media:
+        print("✅ No more anime found, stopping.")
+        break
+
+    for anime in media:
         doc = {
-            "anilist_id": media["id"],
-            "mal_id": media["idMal"],
-            "title": media["title"],
-            "description": media["description"],
-            "genres": media["genres"],
-            "tags": [tag["name"] for tag in media["tags"]],
-            "averageScore": media["averageScore"],
-            "popularity": media["popularity"],
-            "episodes": media["episodes"],
-            "season": media["season"],
-            "seasonYear": media["seasonYear"],
+            "anilist_id": anime["id"],
+            "mal_id": anime.get("idMal"),
+            "title": anime.get("title"),
+            "description": anime.get("description"),
+            "episodes": anime.get("episodes"),
+            "status": anime.get("status"),
+            "season": anime.get("season"),
+            "seasonYear": anime.get("seasonYear"),
+            "genres": anime.get("genres"),
+            "tags": anime.get("tags"),
+            "averageScore": anime.get("averageScore"),
+            "popularity": anime.get("popularity")
         }
-        collection.update_one(
-            {"anilist_id": media["id"]}, {"$set": doc}, upsert=True
-        )
-        print(f"✅ Inserted {media['title']['romaji']}")
+        collection.insert_one(doc)
 
-    if not result["data"]["Page"]["pageInfo"]["hasNextPage"]:
-        break
-
+    print(f"✅ Inserted page {page} ({len(media)} anime)")
     page += 1
-    time.sleep(1)  # rate limit safety
-
-print("🎉 Finished populating anime_map collection!")
+    time.sleep(0.5)  # prevent rate limit

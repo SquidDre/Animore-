@@ -8,7 +8,7 @@ export async function GET(request: NextRequest) {
     
     const client = await clientPromise;
     const db = client.db("anime");
-    const collection = db.collection("anime");
+    const collection = db.collection("anime_anilist");
     
     const results = await collection
       .find({ Name: { $regex: query, $options: "i" } })

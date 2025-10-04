@@ -43,6 +43,15 @@ export default function Home() {
           >
             LOGIN
           </button>
+
+          <button
+            onClick={() => router.push("/map")} // navigate to map page
+            className="outline-2 px-6 py-3 bg-black text-white hover:bg-white hover:text-black transition font-bold"
+          >
+            MAP
+          </button>
+
+          
         </div>
       </div>
     </div>

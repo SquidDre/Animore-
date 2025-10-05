@@ -19,6 +19,12 @@
   }
 }
 
+.points-group {
+  transition: transform 0.3s ease-out;
+  /* uses gpu */
+  will-change: transform;
+}
+
 body {
   background: var(--background);
   color: var(--foreground);

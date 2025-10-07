@@ -14,8 +14,8 @@ client = MongoClient(uri)
 db = client.get_database('anime')
 
 # DATABASE
-rating_docs = list(db.ratings_db.find({}, {'_id': 0}))
-movie_docs = list(db.anime.find({}, {'_id': 0}))
+rating_docs = list(db.ratings.find({}, {'_id': 0}))
+movie_docs = list(db.anime_anilist.find({}, {'_id': 0}))
 
 ratings = pd.DataFrame(rating_docs)
 animes = pd.DataFrame(movie_docs)
@@ -138,15 +138,44 @@ recommend_animes_for_anime(170, X, user_mapper, movie_mapper, movie_inv_mapper, 
 # ---------------- Flask setup ----------------
 app = Flask(__name__) # Initialize Flask app listens for requests and routes them to appropriate functions
 CORS(app) # Enable CORS for the Flask app
-@app.route("/recommend/anime/<int:anime_id>", methods=["GET"]) #when a GET request is made to this route, the recommend_anime function is called
-def recommend_anime(anime_id):
+# ... (all your existing Python code) ...
+
+# NEW function to find an anime_id from a title
+def get_anime_id_from_title(title_str):
+    # Case-insensitive search for the title
+    result = animes[animes['Name'].str.contains(title_str, case=False, na=False)]
+    if not result.empty:
+        return result.iloc[0]['anime_id']
+    return None
+
+# --- Updated Flask Route ---
+@app.route("/recommend", methods=["GET"])
+def recommend_anime():
+    title = request.args.get('title') # Get title from query parameter ?title=...
+    if not title:
+        return jsonify({"error": "Title parameter is required"}), 400
+
+    anime_id = get_anime_id_from_title(title)
+    if anime_id is None:
+        return jsonify({"error": f"Anime '{title}' not found"}), 404
+
+    # Get the collaborative filtering recommendations
     recs = recommend_animes_for_anime(anime_id, X, user_mapper, movie_mapper, movie_inv_mapper, k=10)
-    return jsonify({"anime_id": anime_id, "recommendations": recs})
-    #returns a JSON response containing the anime_id and the list of recommended animes
+    
+    # Return a clean list of recommendations with just the data we need
+    response_data = []
+    for rec in recs:
+        response_data.append({
+            '_id': rec.get('anime_id'), # Use anime_id as the primary identifier
+            'title': {'english': rec.get('Name')},
+            'genres': rec.get('Genres', '').split(', ')
+        })
+
+    return jsonify(response_data)
 
 
 if __name__ == "__main__":
-    app.run(debug=True, port=5000) #starts the Flask development server in debug mode adn at port 5000
+    app.run(debug=True, port=5000)
 
 #run python main.py to start the Flask server
 #open browsert to http://127.0.0.1:5000/recommend/anime/??? where ??? is a valid anime_id to see the recommendations for that anime

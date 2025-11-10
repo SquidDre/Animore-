@@ -5,7 +5,7 @@ import re
 import time
 import numpy as np
 
-uri = "mongodb+srv://deandrebaileyisaiah_db_user:Sakura43@anime.umwgmbd.mongodb.net/"
+uri = "mongodb+srv://test:test1234@anime.umwgmbd.mongodb.net/"
 client = MongoClient(uri)
 db = client.get_database("anime")
 collection = db["anime_anilist"]   # use your new AniList-based collection

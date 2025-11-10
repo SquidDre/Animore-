@@ -15,7 +15,7 @@ import umap
 from sklearn.decomposition import PCA
 import matplotlib.pyplot as plt
 
-client = MongoClient("mongodb+srv://deandrebaileyisaiah_db_user:Sakura43@anime.umwgmbd.mongodb.net/")
+client = MongoClient("mongodb+srv://test:test1234@anime.umwgmbd.mongodb.net/")
 db = client.get_database("anime")
 collection = db["anime_anilist"]   # collection containing embeddings
 

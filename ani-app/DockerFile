@@ -1,0 +1,17 @@
+#pull preconfigured environemnt from node version 20 and uses alpine a light version of linux
+FROM node:20-alpine
+
+WORKDIR /app
+
+#copies and install dependences
+COPY package.json package-lock.json* ./
+RUN npm install
+
+#copies all files now
+COPY . .
+
+#designed to go to port 3000
+EXPOSE 3000
+
+#runs npm run dev
+CMD ["npm", "run", "dev"]

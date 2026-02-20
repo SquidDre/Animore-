@@ -16,7 +16,7 @@ services:
     
   frontend:
     build:
-      context: .ani-app:/app
+      context: ani-app
     ports:
       - "3000:3000"
     volumes:

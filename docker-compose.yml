@@ -1,0 +1,28 @@
+services:
+  #python
+  backend:
+    build:
+      context: .
+      dockerfile: ./api/DockerFile
+    ports:
+      - "5000:5000"
+    volumes:
+      - ./api:/app
+    env_file:
+      - .env
+    environment:
+      - FLASK_ENV=development
+
+    
+  frontend:
+    build:
+      context: .ani-app:/app
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./ani-app:/app
+      - /app/node_modules
+    environment:
+      - NEXT_PUBLIC_API_URL=http://localhost:5000
+    depends_on:
+      - backend #makes sure backend loads first

@@ -55,11 +55,3 @@ plt.xlabel("UMAP Dimension 1")
 plt.ylabel("UMAP Dimension 2")
 plt.grid(True)
 plt.show()
-
-# Optionally, save UMAP coordinates back to MongoDB
-# for title, coords in zip(titles, X_umap):
-#    collection.update_one(
-#        {"title": title},
-#        {"$set": {"umap_2d": coords.tolist()}}
-#    )
-

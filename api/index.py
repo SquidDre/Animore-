@@ -12,11 +12,14 @@ client = MongoClient(uri)
 db = client.get_database('anime')
 
 # DATABASE
-rating_docs = list(db.ratings.find({}, {'_id': 0}))
+rating_docs = list(db.user_ratings.find({}, {'_id': 0}))
 movie_docs = list(db.anime_anilist.find({}, {'_id': 0}))
 
 ratings = pd.DataFrame(rating_docs)
 animes = pd.DataFrame(movie_docs)
+
+if 'mal_id' in animes.columns:
+    animes = animes.rename(columns={'mal_id': 'anime_id'})
 
 print(ratings.head())
 print(animes.head())
@@ -130,7 +133,7 @@ def recommend_animes_for_anime(anime_id, X, user_mapper, movie_mapper, movie_inv
 
 user_id = 558 
 #recommend_animes_for_user(user_id, X, user_mapper, movie_mapper, movie_inv_mapper, k=10)
-recommend_animes_for_anime(170, X, user_mapper, movie_mapper, movie_inv_mapper, k=10)
+#recommend_animes_for_anime(170, X, user_mapper, movie_mapper, movie_inv_mapper, k=10)
 
 
 # ---------------- Flask setup ----------------
@@ -145,6 +148,24 @@ def get_anime_id_from_title(title_str):
     if not result.empty:
         return result.iloc[0]['anime_id']
     return None
+
+print(find_similar_animes(1, X, 5))
+@app.route("/candidates", methods=["GET"])
+def candidates():
+    title = request.args.get('title')
+    if not title:
+        return jsonify({"error": "title required"}), 400
+    
+    anime_id = get_anime_id_from_title(title)
+    if anime_id is None:
+        return jsonify({"error": f"Anime '{title}' not found"}), 404
+    
+    candidate_ids = find_similar_animes(anime_id, X, k=50)
+
+    return jsonify({
+        "source_id": anime_id,
+        "candidate_ids": candidate_ids
+    })
 
 # --- Updated Flask Route ---
 @app.route("/recommend", methods=["GET"])

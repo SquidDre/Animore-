@@ -1,9 +1,10 @@
 services:
   #python
   backend:
+    container_name: Backend
     platform: linux/amd64  # 
     build:
-      container_name: Backend
+      
       context: api
       dockerfile: DockerFile
     ports:
@@ -17,8 +18,9 @@ services:
 
     
   frontend:
+    container_name: Animore
     build:
-      container_name: Animore
+      
       context: ani-app
       dockerfile: DockerFile
     ports:

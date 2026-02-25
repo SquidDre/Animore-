@@ -4,7 +4,7 @@ import sklearn
 import warnings
 from pymongo import MongoClient
 from flask import Flask, request, jsonify
-from flask_cors import CORS #necessary for cross-origin requests from frontend to backend in development
+from flask_cors import CORS 
 warnings.simplefilter(action='ignore', category=FutureWarning)
 
 uri = "mongodb+srv://test:test1234@anime.umwgmbd.mongodb.net/"
@@ -12,23 +12,46 @@ client = MongoClient(uri)
 db = client.get_database('anime')
 
 # DATABASE
-rating_docs = list(db.user_ratings.find({}, {'_id': 0}))
-movie_docs = list(db.anime_anilist.find({}, {'_id': 0}))
+anime_docs = list(db.anime_anilist.find({}, {'_id': 0}))
 
-ratings = pd.DataFrame(rating_docs)
-animes = pd.DataFrame(movie_docs)
+# taken from the csv file (too large for mongo)
+ratings = pd.read_csv('user-filtered.csv', nrows=1000000)
+animes = pd.DataFrame(anime_docs)
 
 if 'mal_id' in animes.columns:
     animes = animes.rename(columns={'mal_id': 'anime_id'})
 
-print(ratings.head())
-print(animes.head())
+#print(ratings.head())
+#print(animes.head())
 
 # TEST AND MATRIX
+
+
 
 n_ratings = len(ratings)
 n_movies = len(ratings['anime_id'].unique())
 n_users = len(ratings['user_id'].unique())
+
+def extract_title(title_obj):
+    if isinstance(title_obj, dict):
+        # Try our preferred keys first
+        title = title_obj.get('english') or title_obj.get('romaji') or title_obj.get('English')
+        if title:
+            return title
+        
+        # If those fail, just grab the very first string inside the object!
+        for key, value in title_obj.items():
+            if isinstance(value, str) and value.strip() != "":
+                return value
+                
+    # If it's not a dictionary at all, just stringify it
+    return str(title_obj)
+
+if 'title' in animes.columns:
+    animes['Name'] = animes['title'].apply(extract_title) #add the Names column for pandas
+else:
+    animes['Name'] = "Unknown Title"
+
 
 #print(f"Number of ratings: {n_ratings}")
 #print(f"Number of unique anime_id's: {n_movies}")
@@ -57,40 +80,40 @@ def create_matrix(df):
     M = len(df['anime_id'].unique())
  
     user_mapper = dict(zip(np.unique(df["user_id"]), list(range(N))))
-    movie_mapper = dict(zip(np.unique(df["anime_id"]), list(range(M))))
+    anime_mapper = dict(zip(np.unique(df["anime_id"]), list(range(M))))
  
     user_inv_mapper = dict(zip(list(range(N)), np.unique(df["user_id"])))
-    movie_inv_mapper = dict(zip(list(range(M)), np.unique(df["anime_id"])))
+    anime_inv_mapper = dict(zip(list(range(M)), np.unique(df["anime_id"])))
     
     user_index = [user_mapper[i] for i in df['user_id']]
-    movie_index = [movie_mapper[i] for i in df['anime_id']]
+    anime_index = [anime_mapper[i] for i in df['anime_id']]
 
-    X = csr_matrix((df["rating"], (movie_index, user_index)), shape=(M, N))
+    X = csr_matrix((df["rating"], (anime_index, user_index)), shape=(M, N))
     
-    return X, user_mapper, movie_mapper, user_inv_mapper, movie_inv_mapper
+    return X, user_mapper, anime_mapper, user_inv_mapper, anime_inv_mapper
     
-X, user_mapper, movie_mapper, user_inv_mapper, movie_inv_mapper = create_matrix(ratings)
+X, user_mapper, anime_mapper, user_inv_mapper, anime_inv_mapper = create_matrix(ratings)
 
 from sklearn.neighbors import NearestNeighbors
 
 def find_similar_animes(movie_id, X, k, metric='cosine', show_distance=False):
     neighbour_ids = []
     
-    if movie_id not in movie_mapper:
+    if movie_id not in anime_mapper:
         print(f"Movie ID {movie_id} not found in movie_mapper!")
         return []
 
-    movie_ind = movie_mapper[movie_id]
-    movie_vec = X[movie_ind]
+    anime_ind = anime_mapper[movie_id]
+    anime_vec = X[anime_ind]
     k += 1  
     kNN = NearestNeighbors(n_neighbors=k, algorithm="brute", metric=metric)
     kNN.fit(X)
-    movie_vec = movie_vec.reshape(1, -1)
-    neighbour = kNN.kneighbors(movie_vec, return_distance=show_distance)
+    anime_vec = anime_vec.reshape(1, -1)
+    neighbour = kNN.kneighbors(anime_vec, return_distance=show_distance)
     
     for i in range(0, k):
         n = neighbour.item(i)
-        neighbour_ids.append(movie_inv_mapper[n])
+        neighbour_ids.append(anime_inv_mapper[n])
     
     neighbour_ids.pop(0) 
     return neighbour_ids
@@ -136,10 +159,8 @@ user_id = 558
 #recommend_animes_for_anime(170, X, user_mapper, movie_mapper, movie_inv_mapper, k=10)
 
 
-# ---------------- Flask setup ----------------
 app = Flask(__name__) # Initialize Flask app listens for requests and routes them to appropriate functions
-CORS(app) # Enable CORS for the Flask app
-# ... (all your existing Python code) ...
+CORS(app)
 
 # NEW function to find an anime_id from a title
 def get_anime_id_from_title(title_str):
@@ -150,6 +171,7 @@ def get_anime_id_from_title(title_str):
     return None
 
 print(find_similar_animes(1, X, 5))
+
 @app.route("/candidates", methods=["GET"])
 def candidates():
     title = request.args.get('title')
@@ -163,8 +185,26 @@ def candidates():
     candidate_ids = find_similar_animes(anime_id, X, k=50)
 
     return jsonify({
-        "source_id": anime_id,
-        "candidate_ids": candidate_ids
+        "source_id": int(anime_id),
+        "candidate_ids":  [int(x) for x in candidate_ids]
+    })
+
+@app.route("/candidates_names", methods=["GET"])
+def candidates_names():
+    title = request.args.get('title')
+    if not title:
+        return jsonify({"error": "title required"}), 400
+    
+    anime_id = get_anime_id_from_title(title)
+    if anime_id is None:
+        return jsonify({"error": f"Anime '{title}' not found"}), 404
+    
+    candidate_ids = find_similar_animes(anime_id, X, k=50)
+
+    ani = animes[animes['anime_id'].isin(candidate_ids)].to_dict(orient="records")
+
+    return jsonify({
+        "animes": ani
     })
 
 # --- Updated Flask Route ---
@@ -179,7 +219,7 @@ def recommend_anime():
         return jsonify({"error": f"Anime '{title}' not found"}), 404
 
     # Get the collaborative filtering recommendations
-    recs = recommend_animes_for_anime(anime_id, X, user_mapper, movie_mapper, movie_inv_mapper, k=10)
+    recs = recommend_animes_for_anime(anime_id, X, user_mapper, anime_mapper, anime_inv_mapper, k=10)
     
     # Return a clean list of recommendations with just the data we need
     response_data = []
@@ -194,7 +234,7 @@ def recommend_anime():
 
 
 if __name__ == "__main__":
-    app.run(debug=True, port=5000)
+    app.run(host="0.0.0.0", debug=True, port=5000, use_reloader=False)
 
 #run python main.py to start the Flask server
 #open browsert to http://127.0.0.1:5000/recommend/anime/??? where ??? is a valid anime_id to see the recommendations for that anime

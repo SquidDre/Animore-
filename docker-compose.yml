@@ -2,9 +2,8 @@ services:
   #python
   backend:
     container_name: Backend
-    platform: linux/amd64  # 
+    platform: linux/amd64
     build:
-      
       context: api
       dockerfile: DockerFile
     ports:

@@ -10,6 +10,7 @@ import AutocompleteSearchBar from "../../components/AutocompleteSearchBar";
 // ... (RecommendedAnime interface remains the same) ...
 interface RecommendedAnime {
   _id: string;
+  mal_id: number;
   title: {
     english: string;
   };
@@ -27,6 +28,8 @@ export default function ExplorePage() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  
+
   // This function is now passed to our new component
   const handleSearch = async (searchTerm: string) => {
     if (!searchTerm) {
@@ -38,16 +41,34 @@ export default function ExplorePage() {
     setError(null);
     setResults([]);
 
+
     try {
-      const response = await fetch(`/api/recommend?title=${encodeURIComponent(searchTerm)}`);
-      
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || 'Failed to fetch recommendations');
+      const flaskResponse = await fetch(`http://localhost:5000/candidates?title=${encodeURIComponent(searchTerm)}`);
+
+      if (!flaskResponse.ok) throw new Error('Could not find that anime.');
+
+      const flaskData = await flaskResponse.json();
+      const candidateIds = flaskData.candidate_ids;
+
+      if (!candidateIds || candidateIds.length === 0) {
+        setResults([]);
+        return;
       }
 
-      const data: RecommendedAnime[] = await response.json();
-      setResults(data);
+      const hydrateResponse = await fetch('/api/anime/hydrate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ids: candidateIds })
+      });
+      
+      if (!hydrateResponse.ok) throw new Error('Failed to fetch anime details.');
+
+      const hydratedAnime: RecommendedAnime[] = await hydrateResponse.json();
+      
+      const sortedAnime = hydratedAnime.sort(
+        (a, b) => candidateIds.indexOf(a.mal_id) - candidateIds.indexOf(b.mal_id)
+      );
+      setResults(sortedAnime);
 
     } catch (err) {
       setError((err as Error).message);
@@ -85,7 +106,7 @@ export default function ExplorePage() {
               )}
               <div className="p-3">
                 <h3 className="font-bold truncate text-sm">{anime.title.english}</h3>
-                <p className="text-xs text-gray-400">Similarity: {(anime.score * 100).toFixed(1)}%</p>
+                <p className="text-xs text-gray-400">Score: {anime.score}/100</p>
               </div>
             </div>
           ))}

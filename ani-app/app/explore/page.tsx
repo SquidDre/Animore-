@@ -14,12 +14,19 @@ interface RecommendedAnime {
   title: {
     english: string;
   };
-  genres: string[];
+  genres: {
+    1: string;
+    2: string;
+    3: string;
+    4: string;
+    5: string;
+  };
+  seasonYear: number;
   coverImage?: {
     large: string;
   };
   popularity: number;
-  score: number;
+  averageScore: number;
 }
 
 
@@ -106,7 +113,10 @@ export default function ExplorePage() {
               )}
               <div className="p-3">
                 <h3 className="font-bold truncate text-sm">{anime.title.english}</h3>
-                <p className="text-xs text-gray-400">Score: {anime.score}/100</p>
+                <p className="text-xs text-gray-400">Score: {anime.averageScore}/100</p>
+                <p className="text-xs text-gray-400">Genres: {Object.values(anime.genres).filter(Boolean).join(', ')}</p>
+                <p className="text-xs text-gray-400">Year: {anime.seasonYear}</p>
+
               </div>
             </div>
           ))}

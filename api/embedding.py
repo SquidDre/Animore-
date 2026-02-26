@@ -34,8 +34,8 @@ for doc in cursor:
     )
 
     description = clean_text(doc.get("description", "") or "")
-    genres = ", ".join(doc.get("genres", []))
-    tags = [t.get("name") for t in (doc.get("tags") or [])]
+    genres = ", ".join(doc.get("genres", []) * 3) # repeat genres 3 to give them more weight
+    tags = [t.get("name") for t in (doc.get("tags") or []) * 2] # repeat tags 2 to give them more weight
 
     # combines all text fields into one string for embedding
 

@@ -1,3 +1,4 @@
+Unfinished Read.me
 # 🎌 Animore+ (Hybrid Anime Discovery Engine)
 
 Animore+ is a high-performance, containerized recommendation platform. It moves beyond simple keyword matching by combining **Collaborative Filtering** (user behavior) with **Semantic Vector Search** (thematic meaning) to map the complex relationships between thousands of anime titles.

@@ -1,13 +1,21 @@
 # 🎌 Animore+ (Hybrid Anime Discovery Engine)
 
-Animore+ is a high-performance, full-stack recommendation platform that maps the relationship between thousands of anime titles. It moves beyond simple keyword matching by combining **Collaborative Filtering** (user behavior) with **Semantic Vector Search** (thematic meaning).
+Animore+ is a high-performance, containerized recommendation platform. It moves beyond simple keyword matching by combining **Collaborative Filtering** (user behavior) with **Semantic Vector Search** (thematic meaning) to map the complex relationships between thousands of anime titles.
 
 
 
-## 🚀 Key Features
-* **Hybrid Recommendation Engine:** Blends "Users who watched X also liked Y" with "Thematic similarity" using Sentence-Transformers.
-* **Distributed Architecture:** Decoupled Flask ML microservice and Next.js hydration layer.
-* **3D Latent Space Map:** (In-Progress) Visualizing the anime universe using **UMAP** dimensionality reduction and **React Three Fiber**.
+---
+
+## 🏗️ Architecture: The Hybrid Engine
+
+The system uses a multi-stage pipeline to ensure recommendations are both mathematically accurate and contextually relevant, without overloading the live server:
+
+1. **Collaborative Filtering (Offline Batch):** We pre-calculate a 1M+ user-item rating matrix. Using K-Nearest Neighbors (KNN), we identify "Users also watched" clusters and cache these as `collab_candidates` directly in MongoDB.
+2. **Content-Based Filtering (Semantic):** We use **Sentence-Transformers** (`all-MiniLM-L6-v2`) to encode a custom "Metadata Soup" (weighted Titles + Genres + Studios + Descriptions) into 384-dimensional semantic vectors.
+3. **Hybrid Reranking (Online):** When a user searches, the Flask API performs a highly optimized Cosine Similarity search on the semantic vectors using Numpy/Scipy, and blends the results with the cached collaborative data.
+4. **Next.js Hydration:** To keep the ML service lightweight, Flask only returns an array of optimized IDs. The Next.js `/api/anime/hydrate` route fetches the rich metadata (images, scores, synopses) from MongoDB Atlas for immediate UI rendering.
+
+
 
 ---
 
@@ -15,66 +23,45 @@ Animore+ is a high-performance, full-stack recommendation platform that maps the
 
 | Layer | Technologies |
 | :--- | :--- |
-| **Frontend** | Next.js 14 (App Router), Tailwind CSS, Framer Motion |
-| **Backend (API)** | Next.js Route Handlers (Node.js), Flask (Python) |
+| **Frontend** | Next.js 14 (App Router), Tailwind CSS, Framer Motion, React Three Fiber |
+| **Backend (ML)** | Flask (Python 3.10+), Gunicorn |
+| **Backend (Web)** | Next.js API Routes (Node.js) |
 | **Database** | MongoDB Atlas (NoSQL) |
-| **ML/Vector Ops** | Sentence-Transformers (`all-MiniLM-L6-v2`), FAISS, UMAP, Scipy |
-| **Data Science** | Pandas, Numpy, Scikit-Learn |
+| **DevOps** | Docker, Docker Compose |
+| **Data Science** | Sentence-Transformers, Scikit-Learn, Pandas, Numpy, Scipy, UMAP |
 
 ---
 
-## 🏗️ Architecture: The Hybrid Pipeline
+## 🐳 Dockerized Environment
 
-The system operates in three distinct phases to ensure speed and accuracy:
+This project is fully containerized to ensure that complex Python C-extensions (like Numpy and Scipy) compile and execute perfectly across all environments (Mac, Windows, Linux).
 
-### 1. Offline Batch Processing
-To save memory and CPU, we pre-calculate the Collaborative Filtering matrix.
-* Processes 1M+ ratings from `user-filtered.csv`.
-* Uses K-Nearest Neighbors (KNN) to find user-overlap candidates.
-* **Result:** Injects a `collab_candidates` array directly into each MongoDB document.
-
-### 2. Semantic Embedding
-* Cleans and "weights" metadata (Genres, Studios, Descriptions) into a "Metadata Soup."
-* Encodes text into **384-dimensional vectors** using Sentence-BERT.
-* Stores these vectors in MongoDB and indexes them via **FAISS** for $O(\log N)$ search speeds.
-
-### 3. Online Hydration (Next.js)
-* The Flask microservice returns raw IDs.
-* The Next.js `/api/anime/hydrate` route fetches the full metadata (Images, Scores, Synopses) from MongoDB to render the UI instantly.
-
-
+### Services
+* **`animore-web`**: The Next.js frontend (Port 3000).
+* **`animore-api`**: The Flask ML microservice (Port 5000).
 
 ---
 
 ## 🚦 Getting Started
 
 ### Prerequisites
-* Node.js 18+
-* Python 3.10+
-* MongoDB Atlas Account
+* [Docker Desktop](https://www.docker.com/products/docker-desktop/) installed and running.
+* A MongoDB Atlas Account and Cluster.
 
-### Backend Setup (Flask)
-1.  Navigate to the API folder: `cd api`
-2.  Create a virtual environment: `python3 -m venv venv && source venv/bin/activate`
-3.  Install dependencies: `pip install -r requirements.txt`
-4.  **Hydrate Collaborative Data:** ```bash
-    python run_once_batch_job.py
-    ```
-5.  Start the ML server: `python app.py`
+### 1. Environment Setup
+Clone the repository and create a `.env` file in the root directory:
+```bash
+git clone [https://github.com/SquidDre/Animore-.git](https://github.com/SquidDre/Animore-.git)
+cd Animore-
 
-### Frontend Setup (Next.js)
-1.  Install dependencies: `npm install`
-2.  Configure `.env.local` with your `MONGODB_URI`.
-3.  Start the development server: `npm run dev`
+```
+Create .env
+```
+MONGODB_URI=your_mongodb_atlas_connection_string
+NEXT_PUBLIC_FLASK_API_URL=http://localhost:5000
+```
 
----
+2. Launch the Stack
+Build and start the containers using Docker Compose. This will install all Node and Python dependencies automatically.
 
-## 📂 Project Structure
-```text
-├── app/                  # Next.js App Router (Frontend + Hydration API)
-├── components/           # React Components (Anime Cards, Search Bar)
-├── api/                  # Python Flask Microservice
-│   ├── run_once_batch_job.py # Offline candidate pre-calculation
-│   ├── embed_anilist.py      # Vector embedding script
-│   └── app.py                # Live Hybrid Recommendation API
-└── lib/                  # MongoDB & Shared Utility functions
+

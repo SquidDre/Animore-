@@ -1,118 +1,81 @@
-# 🎌 Animore+ Recommendation App
+# 🎌 Animore+ (Hybrid Anime Discovery Engine)
 
-Animore+ is a **full-stack anime recommendation system** that lets users search for anime and get personalized recommendations.  
-It combines a **Next.js frontend** with a **Flask backend** that runs a custom recommendation model.
+Animore+ is a high-performance, full-stack recommendation platform that maps the relationship between thousands of anime titles. It moves beyond simple keyword matching by combining **Collaborative Filtering** (user behavior) with **Semantic Vector Search** (thematic meaning).
 
----
 
-## 🚀 Features
-- 🔍 **Search Bar** – search anime by name (with autocomplete).  
-- 🎥 **Anime Details** – shows anime information (genre, episodes, rating).  
-- 🤝 **Recommendations** – click an anime to see recommended similar titles.  
-- 🛠️ **Machine Learning Backend** – powered by a Python/Flask recommendation engine.  
-- 📊 **MongoDB Integration** – stores anime data for search and retrieval.  
+
+## 🚀 Key Features
+* **Hybrid Recommendation Engine:** Blends "Users who watched X also liked Y" with "Thematic similarity" using Sentence-Transformers.
+* **Sub-second Latency:** Powered by **FAISS** (Facebook AI Similarity Search) for lightning-fast vector indexing.
+* **Distributed Architecture:** Decoupled Flask ML microservice and Next.js hydration layer.
+* **3D Latent Space Map:** (In-Progress) Visualizing the anime universe using **UMAP** dimensionality reduction and **React Three Fiber**.
 
 ---
 
-## 🖼️ Demo Flow
-1. Type `"Naruto"` in the search bar.  
-2. Results show matching anime titles from MongoDB.  
-3. Click `"Naruto"`.  
-4. The app fetches recommendations from Flask (`/recommend/anime/<id>`).  
-5. A list of recommended animes with details appears below the search bar.  
+## 🛠️ Tech Stack
+
+| Layer | Technologies |
+| :--- | :--- |
+| **Frontend** | Next.js 14 (App Router), Tailwind CSS, Framer Motion |
+| **Backend (API)** | Next.js Route Handlers (Node.js), Flask (Python) |
+| **Database** | MongoDB Atlas (NoSQL) |
+| **ML/Vector Ops** | Sentence-Transformers (`all-MiniLM-L6-v2`), FAISS, UMAP, Scipy |
+| **Data Science** | Pandas, Numpy, Scikit-Learn |
 
 ---
 
-## ⚙️ Tech Stack
-### Frontend
-- **Next.js (React, TypeScript)**
-- TailwindCSS for styling
+## 🏗️ Architecture: The Hybrid Pipeline
 
-### Backend
-- **Flask (Python)**
-- Flask-CORS for cross-origin requests
-- Custom recommendation system (`main.py`)
+The system operates in three distinct phases to ensure speed and accuracy:
 
-### Database
-- **MongoDB Atlas** (cloud database)
+### 1. Offline Batch Processing
+To save memory and CPU, we pre-calculate the Collaborative Filtering matrix.
+* Processes 1M+ ratings from `user-filtered.csv`.
+* Uses K-Nearest Neighbors (KNN) to find user-overlap candidates.
+* **Result:** Injects a `collab_candidates` array directly into each MongoDB document.
 
----
+### 2. Semantic Embedding
+* Cleans and "weights" metadata (Genres, Studios, Descriptions) into a "Metadata Soup."
+* Encodes text into **384-dimensional vectors** using Sentence-BERT.
+* Stores these vectors in MongoDB and indexes them via **FAISS** for $O(\log N)$ search speeds.
 
-## 🛠️ Setup Instructions
+### 3. Online Hydration (Next.js)
+* The Flask microservice returns raw IDs.
+* The Next.js `/api/anime/hydrate` route fetches the full metadata (Images, Scores, Synopses) from MongoDB to render the UI instantly.
 
-### 1️⃣ Clone the Repository
-```bash
-git clone https://github.com/your-username/animore-plus.git
-cd animore-plus
-```
 
-### 2️⃣ Install Frontend Dependencies
-```bash
-cd frontend   # if your Next.js app is inside /frontend
-npm install
-```
-
-### 3️⃣ Environment Variables (Next.js)
-Create a `.env.local` file in the **frontend** folder:
-
-```env
-MONGODB_URI=mongodb+srv://test:test1234@anime.umwgmbd.mongodb.net/anime?retryWrites=true&w=majority
-```
-
-### 4️⃣ Run Next.js
-```bash
-npm run dev
-```
-Frontend should be live at:  
-👉 `http://localhost:3000`
 
 ---
 
-### 5️⃣ Backend Setup (Flask)
-1. Create a virtual environment:  
-   ```bash
-   python -m venv venv
-   source venv/bin/activate   # Mac/Linux
-   venv\Scripts\activate      # Windows
-   ```
+## 🚦 Getting Started
 
-2. Install dependencies:  
-   ```bash
-   pip install flask flask-cors pymongo pandas scikit-learn
-   ```
+### Prerequisites
+* Node.js 18+
+* Python 3.10+
+* MongoDB Atlas Account
 
-3. Run Flask:  
-   ```bash
-   python main.py
-   ```
+### Backend Setup (Flask)
+1.  Navigate to the API folder: `cd api`
+2.  Create a virtual environment: `python3 -m venv venv && source venv/bin/activate`
+3.  Install dependencies: `pip install -r requirements.txt`
+4.  **Hydrate Collaborative Data:** ```bash
+    python run_once_batch_job.py
+    ```
+5.  Start the ML server: `python app.py`
 
-Flask should run at:  
-👉 `http://127.0.0.1:5000`
-
----
-
-## 🔗 API Endpoints
-- **Search Recommendations by ID**  
-  ```
-  GET /recommend/anime/<anime_id>
-  ```
-  Example: `http://127.0.0.1:5000/recommend/anime/170`
-
-- **Search Recommendations by Name** (optional if implemented)  
-  ```
-  GET /recommend/anime/name/<anime_name>
-  ```
+### Frontend Setup (Next.js)
+1.  Install dependencies: `npm install`
+2.  Configure `.env.local` with your `MONGODB_URI`.
+3.  Start the development server: `npm run dev`
 
 ---
 
-## 📌 To Do / Future Improvements
-- [ ] Add fuzzy search for anime names (partial matches).  
-- [ ] Better UI for displaying recommendations (cards with images).  
-- [ ] Deploy Flask backend (e.g., Heroku, Railway).  
-- [ ] Deploy frontend (Vercel/Netlify).  
-
----
-
-## 👨‍💻 Author
-Built by **[DeAndre Bailey]**  
-Inspired by a love for anime + coding ❤️  
+## 📂 Project Structure
+```text
+├── app/                  # Next.js App Router (Frontend + Hydration API)
+├── components/           # React Components (Anime Cards, Search Bar)
+├── api/                  # Python Flask Microservice
+│   ├── run_once_batch_job.py # Offline candidate pre-calculation
+│   ├── embed_anilist.py      # Vector embedding script
+│   └── app.py                # Live Hybrid Recommendation API
+└── lib/                  # MongoDB & Shared Utility functions

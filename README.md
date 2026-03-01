@@ -6,7 +6,6 @@ Animore+ is a high-performance, full-stack recommendation platform that maps the
 
 ## 🚀 Key Features
 * **Hybrid Recommendation Engine:** Blends "Users who watched X also liked Y" with "Thematic similarity" using Sentence-Transformers.
-* **Sub-second Latency:** Powered by **FAISS** (Facebook AI Similarity Search) for lightning-fast vector indexing.
 * **Distributed Architecture:** Decoupled Flask ML microservice and Next.js hydration layer.
 * **3D Latent Space Map:** (In-Progress) Visualizing the anime universe using **UMAP** dimensionality reduction and **React Three Fiber**.
 
